@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WebSocket demo</title>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+    <body>
+        <form class="form-horizontal">
+            <div id="serverGroup" class="form-group has-feedback">
+                <label class="control-label col-sm-2" for="serverName">Websocket Server</label>
+                <div class="col-sm-4">
+                    <input type="text" class="form-control" id="serverName" aria-describedby="connectedStatus" placeholder="ws://server:port">
+                    <span id="connectedIcon" class="glyphicon form-control-feedback" aria-hidden="true" style="visibility:hidden"></span>
+                    <span id="connectedStatus" class="sr-only">(not connected)</span>
+                </div>
+            </div>
+            <div id="websocket-interact" style="visibility: hidden">
+                <div class="form-group has-feedback">
+                    <label class="control-label col-sm-2" for="serverName">Send:</label>
+                    <div class="col-sm-4">
+                        <input type="text" id="serverSend" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="serverName">Receive:</label>
+                    <div class="col-sm-4">
+                        <textarea id="serverResponse" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+
+        <script>
+            var socket;
+            var serverName = document.getElementById("serverName");
+            var serverGroup = document.getElementById("serverGroup");
+            var serverIcon = document.getElementById("connectedIcon");
+            var serverStatus = document.getElementById("connectedStatus");
+
+            function clearStatus() {
+                serverGroup.classList.remove("has-warning");
+                serverGroup.classList.remove("has-error");
+                serverGroup.classList.remove("has-success");
+                serverIcon.classList.remove("glyphicon-warning-sign");
+                serverIcon.classList.remove("glyphicon-remove");
+                serverIcon.classList.remove("glyphicon-ok");
+                serverIcon.classList.remove("glyphicon-refresh");
+                serverIcon.style.visibility = "hidden";
+            }
+
+            function updateStatus(status) {
+                switch(status) {
+                    case WebSocket.CONNECTING:
+                        console.log("Connecting...");
+                        clearStatus();
+                        serverIcon.classList.add("glyphicon-refresh");
+                        serverIcon.style.visibility = "visible";
+                        break;
+
+                    case WebSocket.OPEN:
+                        console.log("Connected");
+                        clearStatus();
+                        serverGroup.classList.add("has-success");
+                        serverIcon.classList.add("glyphicon-ok");
+                        serverIcon.style.visibility = "visible";
+                        break;
+                    
+                    case WebSocket.CLOSING:
+                        console.log("Closing");
+
+                    case WebSocket.CLOSED:
+                        console.log("Closed");
+                        clearStatus();
+                        break;
+                }
+            }
+
+            function serverChanged() {
+                if (socket) {
+                    //disconnect
+                    console.log("Closing previous connection");
+                    socket.close();
+                    updateStatus(socket.readyState);
+                }
+
+
+                socket = new WebSocket(serverName.value);
+                console.log(socket);
+
+                if (socket) {
+                    updateStatus(socket.readyState);
+
+                    socket.onopen = function(event) {
+                        console.log("Connected to " + serverName.value);
+                        updateStatus(socket.readyState);
+                        document.getElementById("websocket-interact").style.visibility = "visible";
+                    };
+                    socket.onclose = function(event) {
+                        console.log("Disconnected from " + serverName.value);
+                        // hide connected icon
+                    };
+                    socket.onmessage = function(event) {
+                        console.log("Received: " + event.data);
+                        document.getElementById("serverResponse").value += event.data +"\n";
+                    };
+                    socket.onerror = function(event) {
+                        console.log("ERROR: " + event.data);
+                        clearStatus();
+                        serverGroup.classList.add("has-error");
+                        serverIcon.classList.add("glyphicon-remove");
+                        serverIcon.style.visibility = "visible";
+                    }
+                }
+            }
+            
+            // var typingTimer;
+            // serverName.addEventListener("keyup", function(){
+            //     clearTimeout(typingTimer);
+            //     //set spinner
+            //     typingTimer = setTimeout(serverChanged, 500);
+            // });
+            serverName.addEventListener("keydown", function(event){
+                if (event.keyCode == 13) {
+                    event.preventDefault();
+                    serverChanged();
+                }
+                else {
+                    clearStatus();
+                }
+            });
+
+            serverSend.addEventListener("keydown", function(event) {
+                if (event.keyCode == 13) {
+                    if (socket) {
+                        socket.send(serverSend.value);
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
